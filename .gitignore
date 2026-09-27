@@ -1,0 +1,5 @@
+src/
+*.log
+*.part
+test/*.o
+test/kernel.elf
