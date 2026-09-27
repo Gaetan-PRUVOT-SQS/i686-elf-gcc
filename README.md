@@ -10,6 +10,31 @@ vérifie que la toolchain produit un binaire qui démarre dans QEMU.
 | GCC       | 15.3.0 (C uniquement) |
 | libgcc    | celle de GCC 15.3.0 |
 
+## Binaire prêt à l'emploi
+
+Pour Linux x86_64 avec glibc 2.34 ou plus récente (Ubuntu 22.04+, Debian 12+,
+Fedora 35+, RHEL 9+, Arch...), une archive déjà compilée est disponible dans les
+[Releases](https://github.com/Gaetan-PRUVOT-SQS/i686-elf-gcc/releases)
+(42 Mo compressée, 175 Mo une fois extraite) :
+
+```sh
+curl -fLO https://github.com/Gaetan-PRUVOT-SQS/i686-elf-gcc/releases/latest/download/i686-elf-gcc-15.3.0-binutils-2.47-linux-x86_64.tar.xz
+curl -fLO https://github.com/Gaetan-PRUVOT-SQS/i686-elf-gcc/releases/latest/download/i686-elf-gcc-15.3.0-binutils-2.47-linux-x86_64.tar.xz.sha256
+sha256sum -c i686-elf-gcc-15.3.0-binutils-2.47-linux-x86_64.tar.xz.sha256
+mkdir -p ~/.local/opt
+tar -C ~/.local/opt -xf i686-elf-gcc-15.3.0-binutils-2.47-linux-x86_64.tar.xz
+export PATH="$HOME/.local/opt/i686-elf-gcc/bin:$PATH"
+i686-elf-gcc --version
+```
+
+L'archive est relogeable : on peut l'extraire dans n'importe quel dossier
+(`/opt`, `~/tools`...), il suffit de mettre son `bin` dans le `PATH`. Ajouter
+la ligne `export PATH=...` à `~/.bashrc` ou `~/.zshrc` pour la garder.
+
+Compiler soi-même avec `build.sh` (plus bas) reste utile pour une autre cible,
+un autre hôte (macOS, ARM, glibc plus ancienne) ou si l'on préfère ne pas
+dépendre d'un binaire tiers.
+
 ## Pourquoi un cross-compilateur
 
 Le `gcc` de la distribution vise Linux : il suppose une libc, des en-têtes
@@ -27,6 +52,7 @@ Pour un noyau, on veut un compilateur qui ne sait rien de l'hôte. Avec
 
 ```
 build.sh        télécharge, vérifie et compile binutils puis GCC
+release.sh      produit l'archive binaire publiée dans les Releases
 test/           noyau Multiboot de contrôle (boot.S, kernel.c, linker.ld)
 test/Makefile   build du noyau et contrôles (make check)
 ```
@@ -60,7 +86,7 @@ Debian/Ubuntu). `grub-file` (paquet `grub-pc-bin` ou `grub2-tools`) est
 optionnel, il sert à vérifier l'en-tête Multiboot.
 
 Compter environ 4 Go libres pendant la compilation (sources et dossiers de
-build, supprimés à la fin) et 1,3 Go pour la toolchain installée.
+build, supprimés à la fin) et environ 175 Mo pour la toolchain installée.
 
 ## Installation
 
@@ -155,6 +181,24 @@ make check CROSS=/opt/cross/bin/i686-elf-
 Autres cibles : `make run` (fenêtre QEMU, sortie série dans le terminal),
 `make debug` (QEMU arrêté au démarrage et gdb branché sur `kmain`),
 `make clean`.
+
+## Produire l'archive binaire
+
+```sh
+./release.sh
+```
+
+Le script demande Docker. Il lance `build.sh` dans un conteneur Ubuntu 22.04,
+avec `/opt/i686-elf-gcc` comme préfixe, pour deux raisons :
+
+- les binaires sont liés à une glibc ancienne (ils demandent la 2.34), ils
+  tournent donc sur les distributions plus récentes ;
+- aucun chemin de la machine qui construit ne se retrouve dans les binaires.
+
+Ensuite, sur l'hôte, il extrait l'archive dans un autre dossier, vérifie qu'elle
+ne contient pas le chemin du `$HOME`, puis lance `make check` avec cette copie.
+Ça prouve que l'archive fonctionne une fois déplacée. L'archive et sa somme
+SHA-256 arrivent dans `dist/`.
 
 ## Utiliser la toolchain dans un projet
 

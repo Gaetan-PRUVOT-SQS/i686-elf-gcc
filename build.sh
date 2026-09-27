@@ -75,14 +75,14 @@ mkdir build-binutils build-gcc
 	&& ../$BINUTILS/configure --target="$TARGET" --prefix="$PREFIX" \
 		--with-sysroot --disable-nls --disable-werror \
 	&& make -j"$JOBS" MAKEINFO=true \
-	&& make install MAKEINFO=true)
+	&& make install-strip MAKEINFO=true)
 
 # --without-headers : pas de libc pour la cible, on reste en freestanding.
 (cd build-gcc \
 	&& ../$GCC/configure --target="$TARGET" --prefix="$PREFIX" \
 		--disable-nls --enable-languages=c --without-headers --disable-multilib \
 	&& make -j"$JOBS" all-gcc all-target-libgcc MAKEINFO=true \
-	&& make install-gcc install-target-libgcc MAKEINFO=true)
+	&& make install-strip-gcc install-strip-target-libgcc MAKEINFO=true)
 
 rm -rf $BINUTILS $GCC build-binutils build-gcc
 
