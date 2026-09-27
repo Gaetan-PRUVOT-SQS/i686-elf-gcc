@@ -3,3 +3,4 @@ src/
 *.part
 test/*.o
 test/kernel.elf
+dist/
