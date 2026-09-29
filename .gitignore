@@ -4,3 +4,6 @@ src/
 test/*.o
 test/kernel.elf
 dist/
+test/x86_64/*.o
+test/x86_64/kernel.elf
+test/x86_64/lien.txt
