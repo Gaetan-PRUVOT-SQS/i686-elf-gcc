@@ -1,68 +1,48 @@
 #include <stdint.h>
 #include <stddef.h>
+#include "serial.h"
 
-#define COM1 0x3F8
+#define MULTIBOOT_MAGIC 0x2BADB002
+#define VGA_BLANC 0x0F00
 
-static inline void outb(uint16_t port, uint8_t val)
+static int	libgcc_ok(void)
 {
-	__asm__ volatile("outb %0, %1" : : "a"(val), "Nd"(port) : "memory");
+	volatile uint64_t	a;
+	volatile uint64_t	b;
+
+	a = 10000000000ULL;
+	b = 3;
+	return (a / b == 3333333333ULL && a % b == 1);
 }
 
-static inline uint8_t inb(uint16_t port)
+static void	vga_ecrire(const char *msg)
 {
-	uint8_t ret;
+	volatile uint16_t	*vga;
+	size_t				i;
 
-	__asm__ volatile("inb %1, %0" : "=a"(ret) : "Nd"(port) : "memory");
-	return ret;
-}
-
-static void serial_init(void)
-{
-	outb(COM1 + 1, 0x00);	/* pas d'interruptions */
-	outb(COM1 + 3, 0x80);	/* DLAB pour régler la vitesse */
-	outb(COM1 + 0, 0x03);	/* 38400 bauds */
-	outb(COM1 + 1, 0x00);
-	outb(COM1 + 3, 0x03);	/* 8 bits, pas de parité, 1 stop */
-	outb(COM1 + 2, 0xC7);	/* FIFO */
-}
-
-static void serial_puts(const char *s)
-{
-	while (*s)
+	vga = (volatile uint16_t *)0xB8000;
+	i = 0;
+	while (msg[i])
 	{
-		while ((inb(COM1 + 5) & 0x20) == 0)
-			;
-		outb(COM1, (uint8_t)*s++);
+		vga[i] = (uint16_t)(VGA_BLANC | (uint8_t)msg[i]);
+		i++;
 	}
 }
 
-/* Division 64 bits : en 32 bits, gcc appelle __udivdi3 de libgcc. */
-static int libgcc_ok(void)
+void	kmain(uint32_t magic, uint32_t info)
 {
-	volatile uint64_t a = 10000000000ULL;
-	volatile uint64_t b = 3;
-
-	return a / b == 3333333333ULL && a % b == 1;
-}
-
-void kmain(uint32_t magic, uint32_t info)
-{
-	volatile uint16_t *vga = (volatile uint16_t *)0xB8000;
-	const char *msg = "OK";
-
 	(void)info;
 	serial_init();
-	if (magic != 0x2BADB002)
+	if (magic != MULTIBOOT_MAGIC)
 	{
 		serial_puts("mauvais magic multiboot\n");
-		return;
+		return ;
 	}
 	if (!libgcc_ok())
 	{
 		serial_puts("division 64 bits fausse\n");
-		return;
+		return ;
 	}
-	for (size_t i = 0; msg[i]; i++)
-		vga[i] = (uint16_t)(0x0F00 | (uint8_t)msg[i]);
+	vga_ecrire("OK");
 	serial_puts("kmain OK\n");
 }
