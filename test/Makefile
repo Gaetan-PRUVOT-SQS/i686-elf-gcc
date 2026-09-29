@@ -9,7 +9,7 @@ CFLAGS  = -std=gnu11 -ffreestanding -fno-stack-protector -fno-pic \
 LDFLAGS = -T linker.ld -ffreestanding -nostdlib -O2 -Wl,-z,noexecstack
 LIBS    = -lgcc
 
-OBJ = boot.o kernel.o
+OBJ = boot.o serial.o kernel.o
 
 all: kernel.elf
 
@@ -26,8 +26,9 @@ kernel.elf: $(OBJ) linker.ld
 check: kernel.elf
 	$(CROSS)readelf -h kernel.elf | grep -q 'ELF32' && echo "ELF32 OK"
 	$(NM) kernel.elf | grep -q '__udivdi3' && echo "libgcc OK"
-	@if command -v grub-file >/dev/null; then \
-		grub-file --is-x86-multiboot kernel.elf && echo "multiboot OK"; \
+	@GF=$$(command -v grub-file || command -v grub2-file || true); \
+	if [ -n "$$GF" ]; then \
+		$$GF --is-x86-multiboot kernel.elf && echo "multiboot OK"; \
 	else echo "grub-file absent, contrôle multiboot sauté"; fi
 	timeout 10 qemu-system-i386 -kernel kernel.elf -display none -serial stdio -no-reboot \
 		| grep -q "kmain OK" && echo "boot OK" || (echo "boot KO"; exit 1)
