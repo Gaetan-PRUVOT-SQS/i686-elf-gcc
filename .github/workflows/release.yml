@@ -62,4 +62,4 @@ jobs:
           cp dist/x86_64-elf/sources/* assets/
           gh release create "$TAG" assets/* --repo "$REPO" \
             --title "$TAG : GCC 15.3.0, binutils 2.47, i686-elf et x86_64-elf" \
-            --notes "Cross-compilateurs i686-elf et x86_64-elf pour Linux x86_64, construits par GitHub Actions sur Ubuntu 24.04 (glibc 2.39 ou plus récente). En x86_64, une seconde libgcc compilée sans red zone est choisie avec -mno-red-zone. Les archives sources officielles (GCC, binutils, GMP, MPFR, MPC, ISL, gettext) sont jointes, comme le demande la GPL."
+            --notes "Cross-compilateurs i686-elf et x86_64-elf pour Linux x86_64, construits par GitHub Actions sur Ubuntu 24.04 (glibc 2.38 ou plus récente). En x86_64, une seconde libgcc compilée sans red zone est choisie avec -mno-red-zone. Les archives sources officielles (GCC, binutils, GMP, MPFR, MPC, ISL, gettext) sont jointes, comme le demande la GPL."

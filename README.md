@@ -34,8 +34,9 @@ Pour un noyau, on veut un compilateur qui ne sait rien de l'hôte :
 
 ## Installer le binaire
 
-Pour Linux x86_64 avec glibc 2.39 ou plus récente (Ubuntu 24.04+, Debian 13+,
-Fedora 40+, Arch...). Chaque archive fait une quarantaine de Mo.
+Pour Linux x86_64 avec glibc 2.38 ou plus récente (Ubuntu 24.04+, Debian 13+,
+Fedora 39+, Arch...). Chaque archive fait environ 42 Mo, 175 à 180 Mo une
+fois extraite.
 
 ```sh
 TARGET=x86_64-elf        # ou i686-elf
@@ -94,7 +95,7 @@ sudo pacman -S base-devel curl xz bzip2                      # Arch
 ```
 
 Compter environ 4 Go libres pendant la compilation (sources et dossiers de
-build, supprimés à la fin) et 175 Mo par toolchain installée.
+build, supprimés à la fin) et 175 à 180 Mo par toolchain installée.
 
 ### Lancer le build
 
@@ -247,8 +248,9 @@ test/x86_64/                    noyau 64 bits de contrôle de la libgcc sans red
 
 Les archives des Releases sont construites par GitHub Actions : pousser un tag
 `v*` lance `.github/workflows/release.yml`. Pour chaque cible, sur un runner
-Ubuntu 24.04, il lance `release.sh`, puis publie la release avec les deux
-archives, leurs sommes SHA-256 et les sources. Lancé à la main (onglet
+Ubuntu 24.04 (environ 17 minutes, les deux cibles en parallèle), il lance
+`release.sh`, puis publie la release avec les deux archives, leurs sommes
+SHA-256 et les sources. Lancé à la main (onglet
 Actions, « Run workflow »), il construit les archives sans rien publier.
 
 `release.sh` marche aussi en local :
@@ -292,7 +294,7 @@ compare leurs sommes SHA-512 à celles livrées avec GCC.
 
 ## Dépannage
 
-- **`GLIBC_2.39 not found`** avec le binaire : la distribution est trop
+- **`GLIBC_2.38 not found`** avec le binaire : la distribution est trop
   ancienne, compiler avec `build.sh`.
 - **`cannot execute binary file: Exec format error`** : la machine n'est pas en
   x86_64 (ARM, Apple Silicon...), compiler avec `build.sh`.
