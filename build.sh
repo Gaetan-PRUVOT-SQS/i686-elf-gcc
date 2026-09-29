@@ -14,6 +14,7 @@ PREFIX="${PREFIX:-$HOME/.local/opt/cross}"
 JOBS="${JOBS:-$(nproc)}"
 MIRROR="${MIRROR:-https://ftp.gnu.org/gnu}"
 LINK_DIR="${LINK_DIR:-}"
+DESTDIR="${DESTDIR:-}"
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 SRC_DIR="${SRC_DIR:-$ROOT/src}"
 
@@ -30,6 +31,7 @@ Variables (valeur par défaut) :
   SRC_DIR   archives et build    ($SRC_DIR)
   MIRROR    miroir GNU, https    ($MIRROR)
   LINK_DIR  si défini, lien de chaque binaire \$TARGET-* dans ce dossier
+  DESTDIR   si défini, installe dans \$DESTDIR\$PREFIX (archive, sans root)
 EOF
 }
 
@@ -56,7 +58,7 @@ fetch() {
 		|| die "$file corrompu, supprime-le puis relance"
 }
 
-mkdir -p "$SRC_DIR" "$PREFIX"
+mkdir -p "$SRC_DIR" "$DESTDIR$PREFIX"
 cd "$SRC_DIR"
 fetch $BINUTILS.tar.xz "$MIRROR/binutils/$BINUTILS.tar.xz" $BINUTILS_SHA256
 fetch $GCC.tar.xz "$MIRROR/gcc/$GCC/$GCC.tar.xz" $GCC_SHA256
@@ -68,29 +70,44 @@ tar xf $GCC.tar.xz
 # gmp, mpfr, mpc et isl sont compilés avec gcc (sommes sha512 vérifiées par le script).
 (cd $GCC && ./contrib/download_prerequisites)
 
-export PATH="$PREFIX/bin:$PATH"
+# x86_64 : libgcc en plus sans red zone (wiki OSDev, Libgcc without red zone).
+MULTILIB=--disable-multilib
+if [ "$TARGET" = x86_64-elf ]; then
+	MULTILIB=--enable-multilib
+	printf 'MULTILIB_OPTIONS += mno-red-zone\nMULTILIB_DIRNAMES += no-red-zone\n' \
+		>$GCC/gcc/config/i386/t-x86_64-elf
+	# shellcheck disable=SC2016
+	sed -i '/^x86_64-\*-elf\*)/a\\	tmake_file="${tmake_file} i386/t-x86_64-elf"' $GCC/gcc/config.gcc
+	grep -A1 '^x86_64-\*-elf\*)' $GCC/gcc/config.gcc | grep -q 'i386/t-x86_64-elf' \
+		|| die "patch multilib x86_64-elf non appliqué"
+fi
+
+export PATH="$DESTDIR$PREFIX/bin:$PATH"
+# Aucun chemin de la machine dans les binaires (debug et __FILE__).
+MAP="-ffile-prefix-map=$SRC_DIR=."
+export CFLAGS="-g -O2 $MAP" CXXFLAGS="-g -O2 $MAP" CFLAGS_FOR_TARGET="-g -O2 $MAP"
 mkdir build-binutils build-gcc
 
 (cd build-binutils \
 	&& ../$BINUTILS/configure --target="$TARGET" --prefix="$PREFIX" \
 		--with-sysroot --disable-nls --disable-werror \
 	&& make -j"$JOBS" MAKEINFO=true \
-	&& make install-strip MAKEINFO=true)
+	&& make install-strip MAKEINFO=true DESTDIR="$DESTDIR")
 
 # --without-headers : pas de libc pour la cible, on reste en freestanding.
 (cd build-gcc \
 	&& ../$GCC/configure --target="$TARGET" --prefix="$PREFIX" \
-		--disable-nls --enable-languages=c --without-headers --disable-multilib \
+		--disable-nls --enable-languages=c --without-headers "$MULTILIB" \
 	&& make -j"$JOBS" all-gcc all-target-libgcc MAKEINFO=true \
-	&& make install-strip-gcc install-strip-target-libgcc MAKEINFO=true)
+	&& make install-strip-gcc install-strip-target-libgcc MAKEINFO=true DESTDIR="$DESTDIR")
 
 rm -rf $BINUTILS $GCC build-binutils build-gcc
 
 if [ -n "$LINK_DIR" ]; then
 	mkdir -p "$LINK_DIR"
-	ln -sf "$PREFIX/bin/$TARGET-"* "$LINK_DIR/"
+	ln -sf "$DESTDIR$PREFIX/bin/$TARGET-"* "$LINK_DIR/"
 fi
 
-"$PREFIX/bin/$TARGET-gcc" --version | head -1
-"$PREFIX/bin/$TARGET-ld" --version | head -1
-echo "Toolchain prête dans $PREFIX/bin"
+"$DESTDIR$PREFIX/bin/$TARGET-gcc" --version | head -1
+"$DESTDIR$PREFIX/bin/$TARGET-ld" --version | head -1
+echo "Toolchain prête dans $DESTDIR$PREFIX/bin"
